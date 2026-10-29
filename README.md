@@ -1,0 +1,1 @@
+# S3_2_sentence_pattern_2
