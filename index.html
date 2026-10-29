@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Days & Events Learning Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Fredoka & Varela Round for cute kids style -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Fredoka', 'Zen Maru Gothic', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #fef3c7 100%);
+            touch-action: manipulation;
+        }
+
+        /* Custom animation for success feedback */
+        @keyframes bounce-short {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-bounce-short {
+            animation: bounce-short 0.4s ease infinite;
+        }
+
+        @keyframes pop-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in {
+            animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Drag target dropzone outline style */
+        .dropzone {
+            min-height: 68px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border: 3px dashed #cbd5e1;
+            transition: all 0.2s ease;
+        }
+        .dropzone.drag-over {
+            background-color: #e0e7ff;
+            border-color: #6366f1;
+            transform: scale(1.01);
+        }
+
+        /* Word blocks style */
+        .word-block {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+        }
+        .word-block:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+        }
+
+        /* Custom scrollbar for small mobile devices */
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-3 md:p-6 text-slate-800">
+
+    <!-- Top Header & Game Info -->
+    <header class="w-full max-w-4xl flex flex-wrap justify-between items-center bg-white/80 backdrop-blur-md p-4 rounded-3xl shadow-lg border-2 border-white mb-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-400 p-3 rounded-2xl text-white shadow-md">
+                <i class="fa-solid fa-calendar-days text-2xl md:text-3xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-amber-600">English Fun Builder!</h1>
+                <p class="text-xs md:text-sm text-slate-500 font-semibold">句型：What day is...? / It is on...</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 mt-2 sm:mt-0">
+            <!-- Score Pill -->
+            <div class="bg-amber-100 text-amber-700 px-4 py-2 rounded-2xl font-bold flex items-center gap-2 border border-amber-200">
+                <i class="fa-solid fa-star text-amber-500 text-lg"></i>
+                <span>得分: <span id="score-display">0</span></span>
+            </div>
+
+            <!-- Speech Settings Button -->
+            <button id="btn-speech-setting" onclick="toggleSpeechSettings()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2.5 rounded-2xl transition" title="語音設定">
+                <i class="fa-solid fa-volume-high text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="w-full max-w-4xl bg-white rounded-3xl shadow-xl border-4 border-amber-200 p-4 md:p-8 flex flex-col gap-6 relative overflow-hidden">
+        
+        <!-- Level Progress Bar & Selector -->
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3 border-b border-slate-100 pb-4">
+            <!-- Level Tabs -->
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button onclick="switchLevel(1)" id="lvl-btn-1" class="flex-1 sm:flex-none px-4 py-2 rounded-xl font-bold text-sm transition bg-amber-500 text-white shadow-md">
+                    <i class="fa-solid fa-seedling mr-1"></i>關卡 1：入門
+                </button>
+                <button onclick="switchLevel(2)" id="lvl-btn-2" class="flex-1 sm:flex-none px-4 py-2 rounded-xl font-bold text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-tree mr-1"></i>關卡 2：進階
+                </button>
+                <button onclick="switchLevel(3)" id="lvl-btn-3" class="flex-1 sm:flex-none px-4 py-2 rounded-xl font-bold text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-trophy mr-1"></i>關卡 3：挑戰
+                </button>
+            </div>
+
+            <!-- Progress Tracker -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <span id="question-progress-text" class="text-xs font-bold text-slate-400 uppercase tracking-wider">題目 1 / 5</span>
+                <div class="w-32 bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                    <div id="progress-bar" class="bg-amber-400 h-full w-1/5 transition-all duration-300"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Prompt Area (Dynamic Hint Level) -->
+        <div id="question-card" class="bg-gradient-to-r from-amber-50 to-orange-50 p-4 md:p-6 rounded-2xl border-2 border-amber-100 flex flex-col md:flex-row items-center gap-4 relative">
+            
+            <!-- Event Graphic / Emoji -->
+            <div id="event-icon-container" class="w-20 h-20 md:w-24 md:h-24 bg-white rounded-2xl flex items-center justify-center text-4xl md:text-5xl shadow-md border-2 border-amber-200 shrink-0">
+                🎉
+            </div>
+
+            <!-- Prompt Text Container -->
+            <div class="flex-1 text-center md:text-left space-y-1">
+                <div class="flex items-center justify-center md:justify-start gap-2">
+                    <span id="level-badge" class="bg-amber-200 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full">入門提示</span>
+                    <h2 id="event-title-zh" class="text-xl md:text-2xl font-bold text-slate-800">派對是在星期幾？</h2>
+                </div>
+                
+                <!-- Hints (Level 1 shows English reference, Level 2 shows ZH translation, Level 3 minimal) -->
+                <p id="hint-text-en" class="text-slate-600 font-medium text-base md:text-lg">
+                    Q: What day is the party? <br>
+                    A: It is on Friday.
+                </p>
+                <p id="hint-subtext" class="text-xs md:text-sm text-slate-400 font-semibold">點選或拖曳下方的單字積木，排出正確的問答對話！</p>
+            </div>
+
+            <!-- Listen Question Audio Button -->
+            <button onclick="playTargetSentenceAudio()" class="bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-2xl shadow-md hover:scale-105 transition flex items-center gap-2 self-end md:self-center">
+                <i class="fa-solid fa-volume-high text-xl"></i>
+                <span class="text-xs font-bold hidden sm:inline">聽範例</span>
+            </button>
+        </div>
+
+        <!-- Drag & Drop Target Zones (Building Area) -->
+        <div class="space-y-4">
+            
+            <!-- Question Line (Q:) -->
+            <div class="bg-slate-50 p-3 md:p-4 rounded-2xl border border-slate-200">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-lg">問句 (Question)</span>
+                    <button onclick="speakLine('q')" class="text-xs text-indigo-500 hover:text-indigo-700 font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-volume-low"></i> 聽問句
+                    </button>
+                </div>
+                <div id="dropzone-q" class="dropzone rounded-xl p-2 flex flex-wrap gap-2 items-center" data-zone="q">
+                    <!-- Dropped blocks appear here -->
+                </div>
+            </div>
+
+            <!-- Answer Line (A:) -->
+            <div class="bg-slate-50 p-3 md:p-4 rounded-2xl border border-slate-200">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-lg">答句 (Answer)</span>
+                    <button onclick="speakLine('a')" class="text-xs text-emerald-500 hover:text-emerald-700 font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-volume-low"></i> 聽答句
+                    </button>
+                </div>
+                <div id="dropzone-a" class="dropzone rounded-xl p-2 flex flex-wrap gap-2 items-center" data-zone="a">
+                    <!-- Dropped blocks appear here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Word Blocks Pool (Bank) -->
+        <div class="bg-slate-100 p-4 rounded-2xl border-2 border-slate-200">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <i class="fa-solid fa-cubes text-amber-500"></i> 單字積木區 (點擊或拖曳至上方)
+                </span>
+                <span class="text-xs text-slate-400 font-medium">提示：標點符號也要放對喔！</span>
+            </div>
+            
+            <div id="word-bank" class="min-h-[80px] p-2 flex flex-wrap gap-2.5 items-center justify-center bg-white/70 rounded-xl border border-slate-200">
+                <!-- Word blocks inserted dynamically -->
+            </div>
+        </div>
+
+        <!-- Action Control Buttons -->
+        <div class="flex flex-wrap gap-3 justify-between items-center pt-2">
+            <button onclick="resetCurrentQuestion()" class="px-5 py-3 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition flex items-center gap-2 border border-slate-300">
+                <i class="fa-solid fa-rotate-left"></i> 重置 (Reset)
+            </button>
+
+            <div class="flex gap-3">
+                <button onclick="speakCurrentAnswer()" class="px-5 py-3 rounded-2xl font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 transition flex items-center gap-2 border border-amber-300">
+                    <i class="fa-solid fa-play"></i> 聽我的組合
+                </button>
+
+                <button onclick="checkAnswer()" class="px-8 py-3 rounded-2xl font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95 transition flex items-center gap-2 text-lg">
+                    <i class="fa-solid fa-circle-check"></i> 檢查答案
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-6 text-center text-xs text-slate-400 font-medium">
+        Interactive English Grammar Learning • Designed for Kids & Beginners
+    </footer>
+
+    <!-- Result / Success Modal -->
+    <div id="result-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border-4 border-amber-300 text-center space-y-5 animate-pop-in">
+            <div id="modal-icon-container" class="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center text-4xl mx-auto shadow-inner">
+                <i class="fa-solid fa-award"></i>
+            </div>
+
+            <div class="space-y-1">
+                <h3 id="modal-title" class="text-2xl font-bold text-slate-800">好棒！完全正確！</h3>
+                <p id="modal-message" class="text-slate-600 font-medium">你順利排出了正確的句子！</p>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-2xl text-left border border-slate-200 space-y-1">
+                <div class="text-xs font-bold text-slate-400 uppercase">正確對話朗讀</div>
+                <p id="modal-sentence-q" class="text-indigo-600 font-bold text-sm md:text-base"></p>
+                <p id="modal-sentence-a" class="text-emerald-600 font-bold text-sm md:text-base"></p>
+            </div>
+
+            <button id="modal-next-btn" onclick="nextQuestion()" class="w-full py-4 rounded-2xl font-bold text-white bg-amber-500 hover:bg-amber-600 shadow-lg shadow-amber-500/30 text-lg transition">
+                下一題 <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Speech Settings Overlay Panel -->
+    <div id="speech-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 border-2 border-slate-200">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-lg text-slate-800"><i class="fa-solid fa-sliders text-amber-500 mr-2"></i>語音發音設定</h3>
+                <button onclick="toggleSpeechSettings()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">發音速度 (Speed): <span id="rate-val">0.9</span>x</label>
+                    <input type="range" id="speech-rate" min="0.5" max="1.3" step="0.1" value="0.9" oninput="document.getElementById('rate-val').innerText=this.value" class="w-full accent-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">發音音調 (Pitch): <span id="pitch-val">1.0</span></label>
+                    <input type="range" id="speech-pitch" min="0.7" max="1.4" step="0.1" value="1.0" oninput="document.getElementById('pitch-val').innerText=this.value" class="w-full accent-amber-500">
+                </div>
+            </div>
+
+            <button onclick="toggleSpeechSettings()" class="w-full py-2.5 rounded-xl font-bold text-white bg-slate-800 hover:bg-slate-900 transition text-sm">
+                套用設定
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Game Logic -->
+    <script>
+        /* Question Dataset */
+        const questionBank = [
+            {
+                eventZh: "派對 (party)",
+                dayZh: "星期五",
+                icon: "🎉",
+                qWords: ["What", "day", "is", "the", "party", "?"],
+                aWords: ["It", "is", "on", "Friday", "."],
+                distractors: ["in", "at", "Sunday"]
+            },
+            {
+                eventZh: "籃球比賽 (basketball game)",
+                dayZh: "星期三",
+                icon: "🏀",
+                qWords: ["What", "day", "is", "the", "basketball", "game", "?"],
+                aWords: ["It", "is", "on", "Wednesday", "."],
+                distractors: ["on", "the", "Monday"]
+            },
+            {
+                eventZh: "音樂會 (concert)",
+                dayZh: "星期六",
+                icon: "🎵",
+                qWords: ["What", "day", "is", "the", "concert", "?"],
+                aWords: ["It", "is", "on", "Saturday", "."],
+                distractors: ["is", "under", "Tuesday"]
+            },
+            {
+                eventZh: "野餐 (picnic)",
+                dayZh: "星期日",
+                icon: "🧺",
+                qWords: ["What", "day", "is", "the", "picnic", "?"],
+                aWords: ["It", "is", "on", "Sunday", "."],
+                distractors: ["at", "a", "Thursday"]
+            },
+            {
+                eventZh: "英文考試 (English test)",
+                dayZh: "星期二",
+                icon: "📝",
+                qWords: ["What", "day", "is", "the", "English", "test", "?"],
+                aWords: ["It", "is", "on", "Tuesday", "."],
+                distractors: ["for", "in", "Friday"]
+            }
+        ];
+
+        /* Game State */
+        let currentLevel = 1;
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let draggedBlock = null;
+
+        /* Speech Synthesis setup */
+        const synth = window.speechSynthesis;
+
+        // Color mapping for parts of speech (Level 1 visual cues)
+        function getBlockColor(word) {
+            const cleanWord = word.replace(/[?.!]/g, '').toLowerCase();
+            
+            // Wh- question words
+            if (['what', 'when', 'where', 'who'].includes(cleanWord)) {
+                return 'bg-sky-500 border-sky-600 text-white';
+            }
+            // Verbs / Aux
+            if (['is', 'are', 'am'].includes(cleanWord)) {
+                return 'bg-indigo-500 border-indigo-600 text-white';
+            }
+            // Days of the week
+            if (['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].includes(cleanWord)) {
+                return 'bg-amber-500 border-amber-600 text-white font-black';
+            }
+            // Prepositions
+            if (['on', 'in', 'at'].includes(cleanWord)) {
+                return 'bg-emerald-500 border-emerald-600 text-white';
+            }
+            // Pronouns
+            if (['it', 'he', 'she', 'they', 'you', 'i'].includes(cleanWord)) {
+                return 'bg-purple-500 border-purple-600 text-white';
+            }
+            // Punctuation
+            if (['?', '.'].includes(word)) {
+                return 'bg-slate-400 border-slate-500 text-white font-extrabold';
+            }
+            // Default nouns / others
+            return 'bg-teal-500 border-teal-600 text-white';
+        }
+
+        /* Speech Function */
+        function speakText(text, callback) {
+            if (!synth) return;
+            synth.cancel(); // Cancel any ongoing speech
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = parseFloat(document.getElementById('speech-rate').value) || 0.9;
+            utterance.pitch = parseFloat(document.getElementById('speech-pitch').value) || 1.0;
+
+            if (callback) {
+                utterance.onend = callback;
+            }
+
+            synth.speak(utterance);
+        }
+
+        /* Sound Effects using Web Audio API */
+        function playAudioTone(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+                    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3); // A5
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.3);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, ctx.currentTime); // A3
+                    osc.frequency.setValueAtTime(164.81, ctx.currentTime + 0.15); // E3
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.3);
+                } else if (type === 'click') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.08);
+                }
+            } catch (e) {
+                // AudioContext fallback
+            }
+        }
+
+        /* Initialize / Load Question */
+        function loadQuestion() {
+            const qData = questionBank[currentQuestionIndex];
+
+            // Update Progress Bar & Text
+            document.getElementById('question-progress-text').innerText = `題目 ${currentQuestionIndex + 1} / ${questionBank.length}`;
+            document.getElementById('progress-bar').style.width = `${((currentQuestionIndex + 1) / questionBank.length) * 100}%`;
+
+            // Clear dropzones
+            document.getElementById('dropzone-q').innerHTML = '';
+            document.getElementById('dropzone-a').innerHTML = '';
+            const wordBank = document.getElementById('word-bank');
+            wordBank.innerHTML = '';
+
+            // Update UI based on Level
+            const levelBadge = document.getElementById('level-badge');
+            const hintEn = document.getElementById('hint-text-en');
+            const eventTitle = document.getElementById('event-title-zh');
+            const iconContainer = document.getElementById('event-icon-container');
+
+            iconContainer.innerText = qData.icon;
+
+            const targetQStr = qData.qWords.join(' ').replace(' ?', '?');
+            const targetAStr = qData.aWords.join(' ').replace(' .', '.');
+
+            if (currentLevel === 1) {
+                levelBadge.innerText = '關卡 1：入門提示';
+                levelBadge.className = 'bg-amber-200 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full';
+                eventTitle.innerText = `${qData.eventZh}是在${qData.dayZh}嗎？`;
+                hintEn.innerHTML = `Q: ${targetQStr}<br>A: ${targetAStr}`;
+                hintEn.classList.remove('hidden');
+            } else if (currentLevel === 2) {
+                levelBadge.innerText = '關卡 2：進階挑戰';
+                levelBadge.className = 'bg-blue-200 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full';
+                eventTitle.innerText = `問：${qData.eventZh}在星期幾？\n答：在${qData.dayZh}。`;
+                hintEn.classList.add('hidden');
+            } else {
+                levelBadge.innerText = '關卡 3：大師難關';
+                levelBadge.className = 'bg-rose-200 text-rose-800 text-xs font-bold px-2.5 py-0.5 rounded-full';
+                eventTitle.innerText = `${qData.eventZh} ➔ ${qData.dayZh}`;
+                hintEn.classList.add('hidden');
+            }
+
+            // Assemble Word Pool
+            let allWords = [...qData.qWords, ...qData.aWords];
+            if (currentLevel === 3) {
+                // Add extra distractors for Level 3
+                allWords = [...allWords, ...qData.distractors];
+            }
+
+            // Shuffle pool
+            allWords.sort(() => Math.random() - 0.5);
+
+            // Create Word Blocks
+            allWords.forEach((word, idx) => {
+                const block = createWordBlock(word, `block-${idx}`);
+                wordBank.appendChild(block);
+            });
+
+            // Setup Dropzones
+            setupDropzones();
+        }
+
+        /* Create Block Element */
+        function createWordBlock(text, id) {
+            const block = document.createElement('div');
+            block.id = id;
+            block.innerText = text;
+            block.draggable = true;
+
+            // Apply styling
+            const colorClass = (currentLevel === 1) ? getBlockColor(text) : 'bg-amber-500 border-amber-600 text-white';
+            block.className = `word-block ${colorClass} px-3.5 py-2 rounded-xl text-sm md:text-base font-bold border-b-4 transition cursor-pointer flex items-center justify-center`;
+
+            // Click Event (Click-to-move)
+            block.onclick = (e) => {
+                e.stopPropagation();
+                playAudioTone('click');
+                speakText(text);
+
+                // If in pool, auto-move to matching or first available zone
+                if (block.parentElement.id === 'word-bank') {
+                    // Smart place based on punctuation or first room
+                    if (text === '?' || isQuestionWord(text)) {
+                        document.getElementById('dropzone-q').appendChild(block);
+                    } else if (text === '.' || isAnswerWord(text)) {
+                        document.getElementById('dropzone-a').appendChild(block);
+                    } else {
+                        // Place in q if not full, otherwise a
+                        const qZone = document.getElementById('dropzone-q');
+                        const aZone = document.getElementById('dropzone-a');
+                        if (qZone.children.length < questionBank[currentQuestionIndex].qWords.length) {
+                            qZone.appendChild(block);
+                        } else {
+                            aZone.appendChild(block);
+                        }
+                    }
+                } else {
+                    // Return to bank
+                    document.getElementById('word-bank').appendChild(block);
+                }
+            };
+
+            // Drag Events
+            block.ondragstart = (e) => {
+                draggedBlock = block;
+                e.dataTransfer.setData('text/plain', block.id);
+                block.classList.add('opacity-50');
+                speakText(text);
+            };
+
+            block.ondragend = () => {
+                draggedBlock = null;
+                block.classList.remove('opacity-50');
+            };
+
+            return block;
+        }
+
+        // Helper to check question/answer tendency for smart click placing
+        function isQuestionWord(word) {
+            const qList = questionBank[currentQuestionIndex].qWords.map(w => w.toLowerCase());
+            return qList.includes(word.toLowerCase());
+        }
+        function isAnswerWord(word) {
+            const aList = questionBank[currentQuestionIndex].aWords.map(w => w.toLowerCase());
+            return aList.includes(word.toLowerCase());
+        }
+
+        /* Dropzone Event Handlers */
+        function setupDropzones() {
+            const zones = [document.getElementById('dropzone-q'), document.getElementById('dropzone-a'), document.getElementById('word-bank')];
+
+            zones.forEach(zone => {
+                zone.ondragover = (e) => {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                };
+
+                zone.ondragleave = () => {
+                    zone.classList.remove('drag-over');
+                };
+
+                zone.ondrop = (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    if (draggedBlock) {
+                        zone.appendChild(draggedBlock);
+                        playAudioTone('click');
+                    }
+                };
+            });
+        }
+
+        /* Check Player Answer */
+        function checkAnswer() {
+            const qZone = document.getElementById('dropzone-q');
+            const aZone = document.getElementById('dropzone-a');
+
+            const currentQWords = Array.from(qZone.children).map(el => el.innerText);
+            const currentAWords = Array.from(aZone.children).map(el => el.innerText);
+
+            const targetQWords = questionBank[currentQuestionIndex].qWords;
+            const targetAWords = questionBank[currentQuestionIndex].aWords;
+
+            const isQCorrect = JSON.stringify(currentQWords) === JSON.stringify(targetQWords);
+            const isACorrect = JSON.stringify(currentAWords) === JSON.stringify(targetAWords);
+
+            if (isQCorrect && isACorrect) {
+                // Correct!
+                playAudioTone('success');
+                score += 20;
+                document.getElementById('score-display').innerText = score;
+
+                const fullQ = targetQWords.join(' ').replace(' ?', '?');
+                const fullA = targetAWords.join(' ').replace(' .', '.');
+
+                document.getElementById('modal-title').innerText = "🎉 太棒了！完全正確！";
+                document.getElementById('modal-message').innerText = `獲得 20 分！聽聽標準發音吧：`;
+                document.getElementById('modal-sentence-q').innerText = `Q: ${fullQ}`;
+                document.getElementById('modal-sentence-a').innerText = `A: ${fullA}`;
+
+                document.getElementById('result-modal').classList.remove('hidden');
+
+                // Read out full conversation automatically
+                speakText(fullQ, () => {
+                    setTimeout(() => speakText(fullA), 300);
+                });
+
+            } else {
+                // Incorrect
+                playAudioTone('error');
+                
+                // Shake dropzones
+                qZone.classList.add('animate-bounce-short');
+                aZone.classList.add('animate-bounce-short');
+                setTimeout(() => {
+                    qZone.classList.remove('animate-bounce-short');
+                    aZone.classList.remove('animate-bounce-short');
+                }, 500);
+
+                // Speak feedback
+                speakText("Try again!");
+            }
+        }
+
+        /* Reset current level blocks */
+        function resetCurrentQuestion() {
+            playAudioTone('click');
+            loadQuestion();
+        }
+
+        /* Next Question / Loop */
+        function nextQuestion() {
+            document.getElementById('result-modal').classList.add('hidden');
+            currentQuestionIndex++;
+            if (currentQuestionIndex >= questionBank.length) {
+                currentQuestionIndex = 0; // Loop or finish
+                alert(`恭喜完成本階段的所有題目！總得分：${score}`);
+            }
+            loadQuestion();
+        }
+
+        /* Switch Level */
+        function switchLevel(lvl) {
+            currentLevel = lvl;
+            currentQuestionIndex = 0;
+            
+            // Highlight active button
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`lvl-btn-${i}`);
+                if (i === lvl) {
+                    btn.className = "flex-1 sm:flex-none px-4 py-2 rounded-xl font-bold text-sm transition bg-amber-500 text-white shadow-md";
+                } else {
+                    btn.className = "flex-1 sm:flex-none px-4 py-2 rounded-xl font-bold text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200";
+                }
+            }
+
+            playAudioTone('click');
+            loadQuestion();
+        }
+
+        /* Listen to specific line (Q or A) */
+        function speakLine(type) {
+            const targetWords = (type === 'q') ? questionBank[currentQuestionIndex].qWords : questionBank[currentQuestionIndex].aWords;
+            const text = targetWords.join(' ').replace(' ?', '?').replace(' .', '.');
+            speakText(text);
+        }
+
+        /* Listen to full target sample */
+        function playTargetSentenceAudio() {
+            const qText = questionBank[currentQuestionIndex].qWords.join(' ').replace(' ?', '?');
+            const aText = questionBank[currentQuestionIndex].aWords.join(' ').replace(' .', '.');
+            speakText(qText, () => {
+                setTimeout(() => speakText(aText), 300);
+            });
+        }
+
+        /* Speak user's current constructed sentence */
+        function speakCurrentAnswer() {
+            const qZone = document.getElementById('dropzone-q');
+            const aZone = document.getElementById('dropzone-a');
+
+            const currentQWords = Array.from(qZone.children).map(el => el.innerText);
+            const currentAWords = Array.from(aZone.children).map(el => el.innerText);
+
+            const qText = currentQWords.join(' ');
+            const aText = currentAWords.join(' ');
+
+            if (qText.length === 0 && aText.length === 0) {
+                speakText("Please place some word blocks first!");
+                return;
+            }
+
+            if (qText.length > 0) {
+                speakText(qText, () => {
+                    if (aText.length > 0) setTimeout(() => speakText(aText), 300);
+                });
+            } else if (aText.length > 0) {
+                speakText(aText);
+            }
+        }
+
+        /* Settings modal toggle */
+        function toggleSpeechSettings() {
+            const modal = document.getElementById('speech-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        /* Initial Game Load */
+        window.onload = () => {
+            loadQuestion();
+        };
+    </script>
+</body>
+</html>
